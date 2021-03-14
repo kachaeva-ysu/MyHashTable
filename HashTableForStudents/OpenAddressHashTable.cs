@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace HashTableForStudents
 {
-    public class OpenAddressHashTable<TKey, TValue> : IHashTable<TKey, TValue> where TKey : IEquatable<TKey>
+    public class OpenAddressHashTable<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>,IHashTable<TKey, TValue> where TKey : IEquatable<TKey>
     {
         private Pair<TKey, TValue>[] table;
         private int _capacity;
@@ -16,7 +17,6 @@ namespace HashTableForStudents
 
         public OpenAddressHashTable() : this(3)
         { }
-
         public OpenAddressHashTable(int m)
         {
             table = new Pair<TKey, TValue>[m];
@@ -48,7 +48,6 @@ namespace HashTableForStudents
                 IncreaseTable();
             }
         }
-
         private bool TryToPut(int place, TKey key, TValue value)
         {
             if (table[place] == null || table[place].IsDeleted())
@@ -63,14 +62,15 @@ namespace HashTableForStudents
             }
             return false;
         }
-
-        private int FindIndex(TKey x)
+        private Pair<TKey, TValue> Find(TKey x)
         {
             var h = _hashMaker1.ReturnHash(x);
             if (table[h] == null)
                 throw new KeyNotFoundException();
             if (!table[h].IsDeleted() && table[h].Key.Equals(x))
-                return h;
+            {
+                return table[h];
+            }
             int iterationNumber = 1;
             while (true)
             {
@@ -78,22 +78,45 @@ namespace HashTableForStudents
                 if (table[place] == null)
                     throw new KeyNotFoundException();
                 if (!table[place].IsDeleted() && table[place].Key.Equals(x))
-                    return place;
+                {
+                    return table[place];
+                }
                 iterationNumber++;
                 if (iterationNumber >= Count)
                     throw new KeyNotFoundException();
             }
         }
-
         public TValue this[TKey x]
         {
-            get { return table[FindIndex(x)].Value; }
+            get { return Find(x).Value; }
+
             set
             {
-                table[FindIndex(x)].Value = value;
+                var h = _hashMaker1.ReturnHash(x);
+                if (table[h] == null)
+                    throw new KeyNotFoundException();
+                if (!table[h].IsDeleted() && table[h].Key.Equals(x))
+                {
+                    table[h].Value = value;
+                    return;
+                }
+                int iterationNumber = 1;
+                while (true)
+                {
+                    var place = (h + iterationNumber * (1 + _hashMaker2.ReturnHash(x))) % _capacity;
+                    if (table[place] == null)
+                        throw new KeyNotFoundException();
+                    if (!table[place].IsDeleted() && table[place].Key.Equals(x))
+                    {
+                        table[place].Value = value;
+                        return;
+                    }
+                    iterationNumber++;
+                    if (iterationNumber >= Count)
+                        throw new KeyNotFoundException();
+                }
             }
         }
-
         private void IncreaseTable()
         {
             var newCapacity = _primeNumber.Next();
@@ -112,34 +135,60 @@ namespace HashTableForStudents
                 }
             }
         }
-
         public bool Contains(TKey key)
         {
-            try
-            {
-                FindIndex(key);
-            }
-            catch(KeyNotFoundException)
-            {
-                return false;
-            }
-            return true;
-        }
+            int h = _hashMaker1.ReturnHash(key);
 
+            if (table[h] == null)
+                return false;
+            if (!table[h].IsDeleted() && table[h].Key.Equals(key))
+            {
+                return true;
+            }
+
+            int iterationNumber = 1;
+            while (true)
+            {
+                var place = (h + iterationNumber * (1 + _hashMaker2.ReturnHash(key))) % _capacity;
+                if (table[place] == null)
+                    return false;
+                if (!table[place].IsDeleted() && table[place].Key.Equals(key))
+                {
+                    return true;
+                }
+                iterationNumber++;
+                if (iterationNumber >= Count)
+                    return false;
+            }
+        }
         public bool Remove(TKey x)
         {
-            try
-            {
-                table[FindIndex(x)].DeletePair();
-            }
-            catch(KeyNotFoundException)
-            {
+            var h = _hashMaker1.ReturnHash(x);
+            if (table[h] == null)
                 return false;
+            if (!table[h].IsDeleted() && table[h].Key.Equals(x))
+            {
+                table[h].DeletePair();
+                Count--;
+                return true;
             }
-            Count--;
-            return true;
+            int iterationNumber = 1;
+            while (true)
+            {
+                var place = (h + iterationNumber * (1 + _hashMaker2.ReturnHash(x))) % _capacity;
+                if (table[place] == null)
+                    return false;
+                if (!table[place].IsDeleted() && table[place].Key.Equals(x))
+                {
+                    table[place].DeletePair();
+                    Count--;
+                    return true;
+                }
+                iterationNumber++;
+                if (iterationNumber >= Count)
+                    return false;
+            }
         }
-
         public override string ToString()
         {
             StringBuilder result = new StringBuilder();
@@ -149,6 +198,18 @@ namespace HashTableForStudents
                     result.AppendLine(i + " " + table[i].Key);
             }
             return result.ToString();
+        }
+        public IEnumerator<KeyValuePair<TKey,TValue>> GetEnumerator()
+        {
+            for(int i=0;i<table.Length;i++)
+            {
+                if (table[i] != null && !table[i].IsDeleted())
+                    yield return new KeyValuePair<TKey, TValue> (table[i].Key,table[i].Value);
+            }
+        }
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }
