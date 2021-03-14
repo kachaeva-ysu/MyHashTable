@@ -43,6 +43,7 @@ namespace TestHashTable
         private static void UseOpenAddressHashTable(string[] words)
         {
             var htble = new OpenAddressHashTable<string, int>();
+            List<string> itemsForRemoving = new List<string>();
 
             for (int i = 0; i < words.Length; i++)
             {
@@ -50,17 +51,24 @@ namespace TestHashTable
                 if (htble.Contains(slovo))
                 {
                     htble[slovo]++;
+                    if (htble[slovo] == 27)
+                        itemsForRemoving.Add(slovo);
                 }
                 else
                 {
                     htble.Add(slovo, 1);
                 }
             }
+            foreach (var slovo in itemsForRemoving)
+            {
+                htble.Remove(slovo);
+            }
         }
 
         private static void UseDictionary(string[] words)
         {
             Dictionary<string, int> slovar = new Dictionary<string, int>();
+            List<string> itemsForRemoving = new List<string>();
 
             for (int i = 0; i < words.Length; i++)
             {
@@ -68,9 +76,15 @@ namespace TestHashTable
                 if (slovar.ContainsKey(slovo))
                 {
                     slovar[slovo]++;
+                    if (slovar[slovo] == 27)
+                        itemsForRemoving.Add(slovo);
                 }
                 else
                     slovar.Add(slovo, 1);
+            }
+            foreach (var slovo in itemsForRemoving)
+            {
+                slovar.Remove(slovo);
             }
         }
     }
